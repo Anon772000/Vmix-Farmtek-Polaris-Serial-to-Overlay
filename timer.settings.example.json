@@ -24,6 +24,7 @@
       "useRunningQuote": true,
       "flashWhenStopped": false,
       "flashIntervalMs": 350,
+      "flashDurationMs": 140,
       "zeroThreshold": 0.05,
       "rearmAbove": 2,
       "rearmBelow": 0.3
@@ -41,6 +42,7 @@
       "useRunningQuote": true,
       "flashWhenStopped": false,
       "flashIntervalMs": 350,
+      "flashDurationMs": 140,
       "zeroThreshold": 0.05,
       "rearmAbove": 2,
       "rearmBelow": 0.3

@@ -37,7 +37,9 @@ http://localhost:8090/
    - click `Refresh vMix`
    - set one rule for each timer format
    - turn on `Quote means running` if your FarmTek output uses a trailing `"` while the timer is live
-   - turn on `Flash when stopped` if you want the held result to blink
+- turn on `Flash when stopped` if you want the held result to blink
+   - `Flash interval` is how long the title stays visible between flashes
+   - `Flash duration` is how long the title stays hidden during each flash
 4. Click `Save settings`.
 
 ### Run from source
@@ -69,6 +71,7 @@ In that mode:
 - the `"` is removed before sending the number to vMix
 - auto overlay can trigger when the timer starts running
 - the overlay re-arms itself when the quote disappears
+- optional stopped flashing uses vMix alpha `255 -> 0 -> 255`
 - the old threshold-based rearm values are not needed for that rule
 
 ## Files

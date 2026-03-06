@@ -141,8 +141,11 @@ function ruleMarkup(rule, index) {
                     ? fieldHtml("Flash interval (ms)", `<input class="rule-flash-interval-ms" type="number" min="120" step="10" value="${escapeAttr(String(rule.flashIntervalMs ?? 350))}">`)
                     : fieldHtml("Rearm above", `<input class="rule-rearm-above" type="number" step="0.01" value="${escapeAttr(String(rule.rearmAbove ?? 2.0))}">`)}
                 ${useRunningQuote
-                    ? `<div class="field field-note">Quote mode removes threshold rearm. The overlay arms itself again when the trailing quote disappears.</div>`
+                    ? fieldHtml("Flash duration (ms)", `<input class="rule-flash-duration-ms" type="number" min="60" step="10" value="${escapeAttr(String(rule.flashDurationMs ?? 140))}">`)
                     : fieldHtml("Rearm below", `<input class="rule-rearm-below" type="number" step="0.01" value="${escapeAttr(String(rule.rearmBelow ?? 0.3))}">`)}
+                ${useRunningQuote
+                    ? `<div class="field field-note">Quote mode removes threshold rearm. Stopped flashing uses vMix input alpha: visible at 255, hidden at 0.</div>`
+                    : ``}
             </div>
 
             <div class="rule-hint" data-role="target-hint">${escapeHtml(targetHint)}</div>
@@ -377,6 +380,7 @@ function readSettingsFromDom() {
             useRunningQuote,
             flashWhenStopped: card.querySelector(".rule-flash-when-stopped")?.checked ?? false,
             flashIntervalMs: toInt(card.querySelector(".rule-flash-interval-ms")?.value, 350),
+            flashDurationMs: toInt(card.querySelector(".rule-flash-duration-ms")?.value, 140),
             zeroThreshold: toNumber(card.querySelector(".rule-zero-threshold")?.value, 0.05),
             rearmAbove: toNumber(card.querySelector(".rule-rearm-above")?.value, 2.0),
             rearmBelow: toNumber(card.querySelector(".rule-rearm-below")?.value, 0.3)
@@ -444,6 +448,7 @@ function addRule() {
         useRunningQuote: true,
         flashWhenStopped: false,
         flashIntervalMs: 350,
+        flashDurationMs: 140,
         zeroThreshold: 0.05,
         rearmAbove: 2.0,
         rearmBelow: 0.3

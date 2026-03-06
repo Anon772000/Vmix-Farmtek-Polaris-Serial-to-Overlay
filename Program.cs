@@ -440,6 +440,7 @@ sealed class TimerRule
     public bool UseRunningQuote { get; set; }
     public bool FlashWhenStopped { get; set; }
     public int FlashIntervalMs { get; set; } = 350;
+    public int FlashDurationMs { get; set; } = 140;
     public double ZeroThreshold { get; set; } = 0.05;
     public double RearmAbove { get; set; } = 2.0;
     public double RearmBelow { get; set; } = 0.30;
@@ -470,6 +471,7 @@ sealed class TimerRule
             UseRunningQuote = UseRunningQuote,
             FlashWhenStopped = FlashWhenStopped,
             FlashIntervalMs = Math.Clamp(FlashIntervalMs, 120, 5000),
+            FlashDurationMs = Math.Clamp(FlashDurationMs, 60, 5000),
             ZeroThreshold = ZeroThreshold,
             RearmAbove = RearmAbove,
             RearmBelow = RearmBelow
@@ -627,8 +629,7 @@ sealed class FlashUpdate
     public required string RuleId { get; init; }
     public required string RuleName { get; init; }
     public required string InputId { get; init; }
-    public required string FieldName { get; init; }
-    public required string Value { get; init; }
+    public required int Alpha { get; init; }
 }
 
 sealed class VmixRefreshResult
@@ -1137,33 +1138,27 @@ sealed class TimerRouterService : IHostedService, IDisposable
                         }
 
                         runtime.FlashVisible = !runtime.FlashVisible;
-                        runtime.NextFlashToggleAt = now.AddMilliseconds(Math.Clamp(rule.FlashIntervalMs, 120, 5000));
+                        var nextDelay = runtime.FlashVisible
+                            ? Math.Clamp(rule.FlashIntervalMs, 120, 5000)
+                            : Math.Clamp(rule.FlashDurationMs, 60, 5000);
+                        runtime.NextFlashToggleAt = now.AddMilliseconds(nextDelay);
 
                         pendingUpdates.Add(new FlashUpdate
                         {
                             RuleId = rule.Id,
                             RuleName = rule.Name,
                             InputId = target.Input,
-                            FieldName = rule.Field,
-                            Value = runtime.FlashVisible ? runtime.DisplayFrame : string.Empty
+                            Alpha = runtime.FlashVisible ? 255 : 0
                         });
                     }
                 }
 
                 foreach (var update in pendingUpdates)
                 {
-                    var sent = await SendVmixFunctionAsync("SetText", update.InputId, update.FieldName, update.Value, cancellationToken);
+                    var sent = await SendVmixFunctionAsync("SetAlpha", update.InputId, null, update.Alpha.ToString(CultureInfo.InvariantCulture), cancellationToken);
                     if (!sent)
                     {
                         continue;
-                    }
-
-                    lock (_gate)
-                    {
-                        if (_ruleRuntime.TryGetValue(update.RuleId, out var runtime) && runtime.IsRunning == false)
-                        {
-                            runtime.LastSentAt = DateTimeOffset.Now;
-                        }
                     }
                 }
 
@@ -1195,6 +1190,7 @@ sealed class TimerRouterService : IHostedService, IDisposable
         int minSendIntervalMs;
         bool shouldOverlay = false;
         bool rearmed = false;
+        bool needsOpaqueAlpha = false;
         DateTimeOffset now = DateTimeOffset.Now;
 
         lock (_gate)
@@ -1210,8 +1206,12 @@ sealed class TimerRouterService : IHostedService, IDisposable
             resolvedTarget = ResolveRuleTarget(rule, _vmixInputs);
             minSendIntervalMs = _settings.Serial.MinSendIntervalMs;
             bool? runningState = rule.UseRunningQuote ? parsed.IsRunning : null;
+            var previousRunningState = runtime.IsRunning;
+            var previousFlashVisible = runtime.FlashVisible;
+            needsOpaqueAlpha = previousFlashVisible == false &&
+                (!rule.UseRunningQuote || parsed.IsRunning || !rule.FlashWhenStopped);
 
-            if (runtime.LastFrame == parsed.RawText)
+            if (runtime.LastFrame == parsed.RawText && !needsOpaqueAlpha)
             {
                 UpdateLiveState(parsed.RawText, parsed.DisplayText, parsed.NumericValue, parsed.DecimalPlaces, runtime.IsRunning, rule, resolvedTarget, "duplicate", string.Empty);
                 return;
@@ -1225,7 +1225,7 @@ sealed class TimerRouterService : IHostedService, IDisposable
 
             if (rule.UseRunningQuote)
             {
-                rearmed = runtime.IsRunning == true && !parsed.IsRunning;
+                rearmed = previousRunningState == true && !parsed.IsRunning;
                 if (!parsed.IsRunning)
                 {
                     runtime.OverlayShown = false;
@@ -1233,11 +1233,13 @@ sealed class TimerRouterService : IHostedService, IDisposable
                     runtime.NextFlashToggleAt = rule.FlashWhenStopped
                         ? now.AddMilliseconds(Math.Clamp(rule.FlashIntervalMs, 120, 5000))
                         : null;
+                    needsOpaqueAlpha = needsOpaqueAlpha || previousRunningState != false || previousFlashVisible == false;
                 }
                 else
                 {
                     runtime.FlashVisible = true;
                     runtime.NextFlashToggleAt = null;
+                    needsOpaqueAlpha = true;
                 }
             }
             else if (runtime.LastValue is not null &&
@@ -1246,6 +1248,12 @@ sealed class TimerRouterService : IHostedService, IDisposable
             {
                 runtime.OverlayShown = false;
                 rearmed = true;
+            }
+
+            if (!rule.UseRunningQuote)
+            {
+                runtime.FlashVisible = true;
+                runtime.NextFlashToggleAt = null;
             }
 
             runtime.LastFrame = parsed.RawText;
@@ -1291,6 +1299,16 @@ sealed class TimerRouterService : IHostedService, IDisposable
         lock (_gate)
         {
             runtime.LastSentAt = now;
+        }
+
+        if (needsOpaqueAlpha)
+        {
+            var alphaSent = await SendVmixFunctionAsync("SetAlpha", resolvedTarget.Input, null, "255", cancellationToken);
+            if (!alphaSent)
+            {
+                UpdateLiveState(parsed.RawText, parsed.DisplayText, parsed.NumericValue, parsed.DecimalPlaces, runtime.IsRunning, rule, resolvedTarget, "vmix-error", CurrentVmixError());
+                return;
+            }
         }
 
         if (shouldOverlay)
