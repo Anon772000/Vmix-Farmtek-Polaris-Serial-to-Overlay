@@ -1,0 +1,25 @@
+# Build output
+bin/
+obj/
+.publish/
+
+# Published binaries
+FarmtekTimerRouter.exe
+*.dll
+*.exe
+*.pdb
+*.deps.json
+*.runtimeconfig.json
+
+# Local runtime config
+timer.settings.json
+
+# Editor files
+.vs/
+.vscode/
+*.user
+*.suo
+
+# OS files
+Thumbs.db
+.DS_Store
