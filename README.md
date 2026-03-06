@@ -95,8 +95,6 @@ That produces:
 - `.publish\win-x64\FarmtekTimerRouter.exe`
 - a copied root EXE at `.\FarmtekTimerRouter.exe`
 
-For GitHub, it is usually better to upload the EXE to a GitHub Release instead of committing the binary into the source repo.
-
 
 ## First-Time Config On Another Machine
 
