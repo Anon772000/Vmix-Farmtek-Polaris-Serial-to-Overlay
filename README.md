@@ -97,51 +97,6 @@ That produces:
 
 For GitHub, it is usually better to upload the EXE to a GitHub Release instead of committing the binary into the source repo.
 
-## GitHub Setup
-
-If `git` is not installed, install Git for Windows first.
-
-If this folder is not already a repo:
-
-```powershell
-git init
-```
-
-Then publish:
-
-```powershell
-git add .
-git commit -m "Initial commit"
-git branch -M main
-git remote add origin https://github.com/<your-user>/<your-repo>.git
-git push -u origin main
-```
-
-If `origin` already exists, use:
-
-```powershell
-git remote set-url origin https://github.com/<your-user>/<your-repo>.git
-git push -u origin main
-```
-
-## What Gets Ignored
-
-The included `.gitignore` excludes:
-
-- `bin`, `obj`, and `.publish`
-- the built EXE and other generated binaries
-- editor/system files
-- your local `timer.settings.json`
-
-That keeps your repo focused on source code and avoids committing machine-specific settings.
-
-If you already added those files before creating `.gitignore`, remove them from the Git index once:
-
-```powershell
-git rm --cached -r bin obj .publish
-git rm --cached FarmtekTimerRouter.exe
-git rm --cached timer.settings.json
-```
 
 ## First-Time Config On Another Machine
 
